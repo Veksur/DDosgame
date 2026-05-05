@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Server War</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#080808;color:#e0e0e0;font-family:'Courier New',monospace}
+body{display:flex;flex-direction:column;align-items:center;padding:12px 8px}
+
+/* scanline */
+.sl{position:fixed;top:0;left:0;right:0;height:2px;background:rgba(0,255,65,.06);animation:sc 5s linear infinite;pointer-events:none;z-index:9999}
+@keyframes sc{0%{top:-2px}100%{top:100vh}}
+
+/* ── LOBBY SCREEN ── */
+#lobby-screen{width:100%;max-width:440px;text-align:center;padding-top:40px}
+.logo{font-size:38px;font-weight:bold;letter-spacing:4px;color:#00ff41;margin-bottom:4px}
+.logo-sub{font-size:11px;color:#2a2a2a;letter-spacing:3px;margin-bottom:40px}
+.lobby-card{background:#0f0f0f;border:0.5px solid #1e1e1e;border-radius:12px;padding:28px 24px;margin-bottom:16px}
+.lobby-card h2{font-size:12px;letter-spacing:2px;color:#444;margin-bottom:20px}
+.big-btn{width:100%;background:#0a1a0a;border:1px solid #00ff4133;border-radius:8px;color:#00ff41;font-family:'Courier New',monospace;font-size:15px;padding:14px;cursor:pointer;letter-spacing:1px;transition:background .2s,border-color .2s;margin-bottom:10px}
+.big-btn:hover{background:#0f2a0f;border-color:#00ff4166}
+.sep{color:#222;font-size:12px;margin:8px 0;letter-spacing:2px}
+.code-inp{width:100%;background:#0a0a0a;border:1px solid #222;border-radius:8px;color:#fff;font-family:'Courier New',monospace;font-size:22px;padding:12px 16px;text-align:center;letter-spacing:6px;text-transform:uppercase;margin-bottom:10px;outline:none;transition:border-color .2s}
+.code-inp:focus{border-color:#00aaff55}
+.join-btn{width:100%;background:#0a0a1a;border:1px solid #00aaff33;border-radius:8px;color:#00aaff;font-family:'Courier New',monospace;font-size:15px;padding:14px;cursor:pointer;letter-spacing:1px;transition:background .2s,border-color .2s}
+.join-btn:hover{background:#0a0f2a;border-color:#00aaff66}
+.err-msg{color:#ff4444;font-size:12px;margin-top:8px;min-height:18px}
+.wait-box{background:#0f0f0f;border:0.5px solid #1e1e1e;border-radius:12px;padding:24px;text-align:center}
+.wait-code{font-size:48px;font-weight:bold;letter-spacing:10px;color:#00ff41;margin:12px 0}
+.wait-sub{font-size:11px;color:#444;margin-top:8px}
+.blink{animation:bl 1.2s step-end infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── GAME SCREEN ── */
+#game-screen{width:100%;max-width:860px;display:none}
+.top-bar{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:10px}
+.pp{background:#0f0f0f;border-radius:8px;padding:10px 14px}
+.pp.p1{border-left:3px solid #00aaff}
+.pp.p2{border-right:3px solid #ff4444;text-align:right}
+.pp .pname{font-size:12px;font-weight:bold;margin-bottom:2px}
+.pp.p1 .pname{color:#00aaff}.pp.p2 .pname{color:#ff4444}
+.pp .pbw{font-size:10px;color:#444}
+.pp .pscore{font-size:20px;font-weight:bold;margin-top:2px}
+.pp.p1 .pscore{color:#00aaff}.pp.p2 .pscore{color:#ff4444}
+.pp .you-badge{display:inline-block;font-size:9px;background:#1a2a1a;color:#00ff41;border:0.5px solid #00ff4133;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.timer-box{text-align:center;background:#0f0f0f;border-radius:8px;padding:8px 14px;border:0.5px solid #1e1e1e}
+.tval{font-size:30px;font-weight:bold;color:#ffcc00}
+.tlbl{font-size:9px;color:#333;letter-spacing:1px}
+
+.ctrl-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cpct{font-size:11px;font-weight:bold;min-width:34px}
+.cpct.l1{color:#00aaff}.cpct.l2{color:#ff4444;text-align:right}
+.cbar{flex:1;height:12px;background:#111;border-radius:6px;overflow:hidden;display:flex}
+.cf1{height:100%;background:#00aaff;border-radius:6px 0 0 6px;transition:width .4s}
+.cf2{height:100%;background:#ff4444;border-radius:0 6px 6px 0;transition:width .4s;margin-left:auto}
+
+.srv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:10px}
+.srv{background:#111;border:1.5px solid #1e1e1e;border-radius:8px;padding:9px 7px;text-align:center;position:relative;overflow:hidden;transition:background .2s,border-color .2s}
+.srv.p1{background:#001828;border-color:#00aaff44}
+.srv.p2{background:#280000;border-color:#ff444444}
+.srv.sp1{outline:2.5px solid #00aaff;outline-offset:1px}
+.srv.sp2{outline:2.5px solid #ff4444;outline-offset:1px}
+.srv.sboth{outline:2.5px solid #cc55ff;outline-offset:1px}
+.srv-n{font-size:9px;color:#333;margin-bottom:3px}
+.srv-i{font-size:12px;margin-bottom:3px}
+.srv.neutral .srv-i{color:#333}.srv.p1 .srv-i{color:#00aaff}.srv.p2 .srv-i{color:#ff4444}
+.srv-hb{height:4px;background:#1a1a1a;border-radius:2px;margin:3px 0}
+.srv-hf{height:100%;border-radius:2px;transition:width .3s}
+.srv.neutral .srv-hf{background:#444}.srv.p1 .srv-hf{background:#00aaff}.srv.p2 .srv-hf{background:#ff4444}
+.srv-row{display:flex;justify-content:space-between;align-items:center}
+.srv-ow{font-size:8px;font-weight:bold}
+.srv.neutral .srv-ow{color:#333}.srv.p1 .srv-ow{color:#00aaff}.srv.p2 .srv-ow{color:#ff4444}
+.srv-hp{font-size:8px;color:#333}
+.srv-cb{height:3px;background:#0a0a0a;border-radius:2px;margin-top:3px}
+.srv-cf{height:100%;border-radius:2px;transition:width .2s}
+
+.actions-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.ap{background:#0f0f0f;border-radius:8px;padding:10px 11px}
+.ap h3{font-size:9px;letter-spacing:1.5px;margin-bottom:8px}
+.ap.ap1 h3{color:#00aaff}.ap.ap2 h3{color:#ff4444}
+.ag{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.ab{background:#141414;border:0.5px solid #1e1e1e;border-radius:6px;padding:7px 7px 5px;cursor:pointer;font-family:'Courier New',monospace;transition:background .15s,border-color .15s;text-align:left}
+.ab:hover:not(.cd){background:#1a1a1a;border-color:#333}
+.ab.cd{opacity:.3;cursor:not-allowed}
+.ab .ak{font-size:9px;color:#333;display:block;margin-bottom:1px}
+.ab .an{font-size:11px;font-weight:bold;display:block}
+.ap1 .ab .an{color:#00aaff}.ap2 .ab .an{color:#ff4444}
+.ab .ad{font-size:9px;color:#444;display:block;margin-top:1px}
+.ab .acd{font-size:9px;color:#cc3333;display:block}
+.tgt{background:#141414;border:0.5px solid #1e1e1e;border-radius:6px;padding:5px 8px;font-size:10px;color:#555;margin-top:6px}
+.tgt span{font-weight:bold}
+.ap1 .tgt span{color:#00aaff}.ap2 .tgt span{color:#ff4444}
+
+.log-lbl{font-size:9px;color:#222;letter-spacing:1px;margin-bottom:5px}
+.log-box{background:#060606;border:0.5px solid #111;border-radius:8px;padding:8px 10px;height:100px;overflow-y:auto}
+.le{font-size:10px;line-height:1.9;display:block}
+.le .lt{color:#1a1a1a;margin-right:5px}
+.ev1{color:#2288bb}.ev2{color:#bb3333}.evn{color:#333}.evcap{color:#ffcc00;font-weight:bold}
+
+/* overlay for end/wait */
+.goverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center;padding:20px}
+.goverlay h2{font-size:28px;letter-spacing:2px;margin-bottom:8px}
+.goverlay p{font-size:13px;color:#555;margin-bottom:22px}
+.goverlay button{background:#111;border:1px solid #333;border-radius:8px;color:#fff;font-family:'Courier New',monospace;font-size:13px;padding:11px 28px;cursor:pointer;transition:background .2s}
+.goverlay button:hover{background:#1a1a1a;border-color:#555}
+</style>
+</head>
+<body>
+<div class="sl"></div>
+
+<!-- LOBBY -->
+<div id="lobby-screen">
+  <div class="logo">SERVER WAR</div>
+  <div class="logo-sub">BATAILLE DE SERVEURS</div>
+
+  <div id="lobby-main">
+    <div class="lobby-card">
+      <h2>// CRÉER UNE PARTIE</h2>
+      <button class="big-btn" onclick="createLobby()">[ + CRÉER UN LOBBY ]</button>
+    </div>
+    <div class="lobby-card">
+      <h2>// REJOINDRE UNE PARTIE</h2>
+      <input class="code-inp" id="code-inp" maxlength="5" placeholder="XXXXX" oninput="this.value=this.value.toUpperCase()">
+      <button class="join-btn" onclick="joinLobby()">[ → REJOINDRE ]</button>
+      <div class="err-msg" id="err-msg"></div>
+    </div>
+  </div>
+
+  <div id="lobby-wait" style="display:none">
+    <div class="wait-box">
+      <div style="font-size:11px;color:#444;letter-spacing:2px;margin-bottom:8px">CODE DU LOBBY</div>
+      <div class="wait-code" id="wait-code">-----</div>
+      <div style="font-size:12px;color:#555;margin-bottom:16px">Partagez ce code avec votre ami</div>
+      <div style="font-size:11px;color:#00ff4166" class="blink">En attente du joueur 2...</div>
+      <div class="wait-sub">Il suffit d'ouvrir ce site et d'entrer le code</div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen">
+  <div class="top-bar">
+    <div class="pp p1">
+      <div class="pname">JOUEUR 1 <span class="you-badge" id="you1" style="display:none">VOUS</span></div>
+      <div class="pbw">bande passante: <span id="p1bw">100</span> MB/s</div>
+      <div class="pscore" id="p1score">0 pts</div>
+    </div>
+    <div class="timer-box">
+      <div class="tval" id="timer">90</div>
+      <div class="tlbl">secondes</div>
+    </div>
+    <div class="pp p2">
+      <div class="pname">JOUEUR 2 <span class="you-badge" id="you2" style="display:none">VOUS</span></div>
+      <div class="pbw">bande passante: <span id="p2bw">100</span> MB/s</div>
+      <div class="pscore" id="p2score">0 pts</div>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <span class="cpct l1" id="p1pct">0%</span>
+    <div class="cbar">
+      <div class="cf1" id="cf1" style="width:0%"></div>
+      <div class="cf2" id="cf2" style="width:0%"></div>
+    </div>
+    <span class="cpct l2" id="p2pct">0%</span>
+  </div>
+
+  <div class="srv-grid" id="srv-grid"></div>
+
+  <div class="actions-row">
+    <div class="ap ap1">
+      <h3>// JOUEUR 1 — COMMANDES</h3>
+      <div class="ag" id="ag1"></div>
+      <div class="tgt ap1">Cible : <span id="tgt1">nginx-01</span></div>
+    </div>
+    <div class="ap ap2">
+      <h3>// JOUEUR 2 — COMMANDES</h3>
+      <div class="ag" id="ag2"></div>
+      <div class="tgt ap2">Cible : <span id="tgt2">redis-06</span></div>
+    </div>
+  </div>
+
+  <div class="log-lbl">// JOURNAL SYSTÈME</div>
+  <div class="log-box" id="log-box"></div>
+
+  <div class="goverlay" id="end-overlay" style="display:none">
+    <h2 id="end-title">FIN</h2>
+    <p id="end-sub"></p>
+    <button onclick="sendRestart()">[ REJOUER ]</button>
+  </div>
+</div>
+
+<script>
+let ws, myPlayer = null, state = null;
+
+const CMDS1 = [
+  {k:'ddos', lbl:'DDoS',     hint:'A',  desc:'Attaquer (−HP)'},
+  {k:'cap',  lbl:'CAPTURER', hint:'D',  desc:'Capturer (<40 HP)'},
+  {k:'shield',lbl:'BOUCLIER',hint:'R',  desc:'Bloquer attaque'},
+  {k:'reboot',lbl:'REDÉMARRER',hint:'F',desc:'Restaurer HP'},
+];
+const CMDS2 = [
+  {k:'ddos', lbl:'DDoS',     hint:'←', desc:'Attaquer (−HP)'},
+  {k:'cap',  lbl:'CAPTURER', hint:'→', desc:'Capturer (<40 HP)'},
+  {k:'shield',lbl:'BOUCLIER',hint:',', desc:'Bloquer attaque'},
+  {k:'reboot',lbl:'REDÉMARRER',hint:'.',desc:'Restaurer HP'},
+];
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onmessage = e => handle(JSON.parse(e.data));
+  ws.onclose   = () => setTimeout(connect, 2000);
+}
+function send(obj) { if (ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
+
+function handle(msg) {
+  if (msg.type === 'lobby_created') {
+    myPlayer = msg.player;
+    document.getElementById('lobby-main').style.display = 'none';
+    document.getElementById('lobby-wait').style.display = 'block';
+    document.getElementById('wait-code').textContent = msg.code;
+  } else if (msg.type === 'joined') {
+    myPlayer = msg.player;
+    document.getElementById('lobby-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('you'+(myPlayer==='p1'?'1':'2')).style.display='inline-block';
+  } else if (msg.type === 'state') {
+    state = msg.state;
+    if (document.getElementById('lobby-screen').style.display !== 'none') {
+      document.getElementById('lobby-screen').style.display = 'none';
+      document.getElementById('game-screen').style.display = 'block';
+      if (myPlayer) document.getElementById('you'+(myPlayer==='p1'?'1':'2')).style.display='inline-block';
+    }
+    render();
+  } else if (msg.type === 'error') {
+    document.getElementById('err-msg').textContent = msg.msg;
+  }
+}
+
+function createLobby() { send({ type:'create' }); }
+function joinLobby() {
+  const code = document.getElementById('code-inp').value.trim().toUpperCase();
+  if (code.length < 4) { document.getElementById('err-msg').textContent = 'Code trop court.'; return; }
+  send({ type:'join', code });
+}
+function sendRestart() { send({ type:'restart' }); document.getElementById('end-overlay').style.display='none'; }
+
+function render() {
+  if (!state) return;
+  document.getElementById('timer').textContent = state.timer;
+  document.getElementById('timer').style.color = state.timer <= 15 ? '#ff4444' : '#ffcc00';
+  document.getElementById('p1score').textContent = (state.scores?.p1??0)+' pts';
+  document.getElementById('p2score').textContent = (state.scores?.p2??0)+' pts';
+  const p1c = state.servers.filter(s=>s.owner==='p1').length;
+  const p2c = state.servers.filter(s=>s.owner==='p2').length;
+  document.getElementById('cf1').style.width = (p1c*10)+'%';
+  document.getElementById('cf2').style.width = (p2c*10)+'%';
+  document.getElementById('p1pct').textContent = (p1c*10)+'%';
+  document.getElementById('p2pct').textContent = (p2c*10)+'%';
+  document.getElementById('p1bw').textContent = Math.max(0,100-state.cooldowns.p1.ddos*10);
+  document.getElementById('p2bw').textContent = Math.max(0,100-state.cooldowns.p2.ddos*10);
+
+  renderServers();
+  renderActions('ag1','ap1',CMDS1,state.cooldowns.p1,'p1');
+  renderActions('ag2','ap2',CMDS2,state.cooldowns.p2,'p2');
+  const t1=state.servers[state.selected.p1], t2=state.servers[state.selected.p2];
+  document.getElementById('tgt1').textContent = t1?t1.name:'?';
+  document.getElementById('tgt2').textContent = t2?t2.name:'?';
+  renderLog();
+
+  const ov = document.getElementById('end-overlay');
+  if (state.phase==='ended') {
+    ov.style.display='flex';
+    const p1s=state.scores?.p1??0, p2s=state.scores?.p2??0;
+    let w='ÉGALITÉ !', wc='#ffcc00';
+    if(p1s>p2s){w='JOUEUR 1 GAGNE !';wc='#00aaff';}
+    else if(p2s>p1s){w='JOUEUR 2 GAGNE !';wc='#ff4444';}
+    document.getElementById('end-title').textContent=w;
+    document.getElementById('end-title').style.color=wc;
+    document.getElementById('end-sub').textContent=`J1: ${p1s} pts  —  J2: ${p2s} pts`;
+  } else { ov.style.display='none'; }
+}
+
+function renderServers() {
+  const g = document.getElementById('srv-grid');
+  g.innerHTML='';
+  state.servers.forEach((s,i)=>{
+    const d=document.createElement('div');
+    let cls='srv '+s.owner;
+    const s1=i===state.selected.p1, s2=i===state.selected.p2;
+    if(s1&&s2) cls+=' sboth'; else if(s1) cls+=' sp1'; else if(s2) cls+=' sp2';
+    d.className=cls;
+    const hp=Math.round(s.hp/s.maxHp*100);
+    const ow=s.owner==='neutral'?'LIBRE':s.owner==='p1'?'J1':'J2';
+    const cap=s.capturing?`<div class="srv-cb"><div class="srv-cf" style="width:${Math.round(s.capProgress)}%;background:${s.capturing==='p1'?'#00aaff':'#ff4444'}"></div></div>`:'';
+    d.innerHTML=`<div class="srv-n">${s.name}</div><div class="srv-i">${s.icon}</div><div class="srv-hb"><div class="srv-hf" style="width:${hp}%"></div></div><div class="srv-row"><div class="srv-ow">${ow}</div><div class="srv-hp">${Math.round(s.hp)}hp</div></div>${cap}`;
+    g.appendChild(d);
+  });
+}
+
+function renderActions(gridId, panelCls, cmds, cds, player) {
+  const g=document.getElementById(gridId);
+  g.innerHTML='';
+  const isMe=myPlayer===player;
+  cmds.forEach(c=>{
+    const onCd=cds[c.k]>0;
+    const b=document.createElement('div');
+    b.className='ab '+(panelCls==='ap1'?'ap1':'ap2')+(onCd?' cd':'');
+    b.innerHTML=`<span class="ak">${c.hint}</span><span class="an">${c.lbl}</span><span class="ad">${c.desc}</span>${onCd?`<span class="acd">cd: ${cds[c.k]}s</span>`:''}`;
+    if(!onCd && isMe && state.phase==='playing') b.onclick=()=>send({type:'action',action:c.k});
+    g.appendChild(b);
+  });
+}
+
+function renderLog() {
+  document.getElementById('log-box').innerHTML=(state.log||[]).map(l=>
+    `<span class="le ${l.cls}"><span class="lt">[${l.ts}]</span>${l.msg}</span>`
+  ).join('');
+}
+
+document.addEventListener('keydown', e => {
+  if (!state || state.phase!=='playing' || !myPlayer) return;
+  const maps = {
+    p1:{'w':'select_up','s':'select_down','a':'ddos','d':'cap','r':'shield','f':'reboot'},
+    p2:{'ArrowUp':'select_up','ArrowDown':'select_down','ArrowLeft':'ddos','ArrowRight':'cap',',':'shield','.':'reboot'},
+  };
+  const action = maps[myPlayer]?.[e.key];
+  if (!action) return;
+  e.preventDefault();
+  send({type:'action', action});
+});
+
+document.getElementById('code-inp').addEventListener('keydown', e => {
+  if (e.key==='Enter') joinLobby();
+});
+
+connect();
+</script>
+</body>
+</html>
